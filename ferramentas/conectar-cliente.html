@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conectar clientes</title>
+<style>
+  :root { --verm: #c8102e; --borda: #e2ddd7; --suave: #6b645c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, "Segoe UI", sans-serif; background: #f5f3f0; color: #222; }
+  header { background: var(--verm); color: #fff; padding: 14px 16px; font-weight: 800; font-size: 19px; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  section { background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  h2 { margin: 0 0 8px; font-size: 18px; }
+  label { display: block; font-size: 13px; color: var(--suave); margin: 8px 0; }
+  input, textarea { font: inherit; width: 100%; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 8px; margin-top: 3px; color: #222; }
+  textarea { font-family: ui-monospace, monospace; font-size: 12px; }
+  button { font: inherit; background: var(--verm); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer; font-weight: 600; }
+  button.sec { background: #fff; color: #222; border: 1px solid var(--borda); font-weight: 400; }
+  .aviso { background: #fff7e0; border: 1px solid #f0d890; border-radius: 8px; padding: 10px; }
+  .erro { background: #fde2e2; border-color: #f3b0b0; }
+  .ok { background: #e3f6e8; border-color: #a8dcb5; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td, th { text-align: left; padding: 6px; border-bottom: 1px solid var(--borda); }
+  .dica { color: var(--suave); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>Conectar WhatsApp de clientes ao robô</header>
+<main>
+  <div id="naoPronto" class="aviso erro" hidden>Preencha <b>appId</b>, <b>appSecret</b> e <b>configId</b> em <code>ferramentas/provedor.json</code> e reinicie a ferramenta.</div>
+
+  <section>
+    <h2>1. Conectar o WhatsApp do cliente</h2>
+    <p class="dica">Faça junto com o cliente, com o celular dele na mão. Ele entra com o Facebook dele, escolhe "conectar o WhatsApp Business existente" e lê o QR code no aplicativo.</p>
+    <label>Nome da loja<input id="nome" placeholder="Marmitaria Tempero da Família"></label>
+    <button id="btnConectar">Conectar WhatsApp do cliente</button>
+    <div id="res1" style="margin-top:10px"></div>
+  </section>
+
+  <section id="secCodigo" hidden>
+    <h2>2. Colar no painel do cliente</h2>
+    <p class="dica">No computador do balcão do cliente: Configurações &gt; WhatsApp &gt; <b>Código de conexão</b>. Cole o código abaixo e salve.</p>
+    <textarea id="codigo" rows="4" readonly></textarea>
+    <button class="sec" id="btnCopiar">Copiar código</button>
+  </section>
+
+  <section id="secAtivar" hidden>
+    <h2>3. Ativar o recebimento das mensagens</h2>
+    <p class="dica">Com o sistema e o ngrok rodando no computador do cliente, informe o endereço público dele. A Meta vai testar o endereço na hora.</p>
+    <label>Endereço público do cliente<input id="urlCliente" placeholder="https://tempero.ngrok-free.app"></label>
+    <button id="btnAtivar">Ativar</button>
+    <div id="res3" style="margin-top:10px"></div>
+  </section>
+
+  <section>
+    <h2>Clientes conectados</h2>
+    <table><thead><tr><th>Loja</th><th>Número</th><th>Recebimento</th><th></th></tr></thead><tbody id="lista"></tbody></table>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function api(metodo, url, body) {
+  const r = await fetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.erro || 'Erro');
+  return d;
+}
+const msg = (el, texto, tipo) => ($(el).innerHTML = `<div class="aviso ${tipo || ''}">${texto}</div>`);
+
+let cfg = null, sessao = {}, wabaAtual = null;
+
+async function iniciar() {
+  cfg = await api('GET', '/api/config');
+  $('#naoPronto').hidden = cfg.pronto;
+  if (cfg.appId) {
+    window.fbAsyncInit = () => FB.init({ appId: cfg.appId, autoLogAppEvents: true, xfbml: true, version: cfg.versaoApi });
+    const s = document.createElement('script');
+    s.src = 'https://connect.facebook.net/pt_BR/sdk.js'; s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
+    document.body.appendChild(s);
+  }
+  listar();
+}
+
+// A janela da Meta avisa aqui quando o cliente termina (e qual conta/número foi conectado).
+window.addEventListener('message', (e) => {
+  if (!String(e.origin).endsWith('facebook.com')) return;
+  try {
+    const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+    if (d?.type !== 'WA_EMBEDDED_SIGNUP') return;
+    if (String(d.event).startsWith('FINISH')) sessao = { wabaId: d.data?.waba_id, phoneNumberId: d.data?.phone_number_id };
+    else if (d.event === 'CANCEL') msg('#res1', 'O cadastro foi interrompido' + (d.data?.current_step ? ` na etapa ${esc(d.data.current_step)}` : '') + '.', 'erro');
+  } catch {}
+});
+
+$('#btnConectar').onclick = () => {
+  if (!window.FB) return msg('#res1', 'O Facebook ainda não carregou. Confira o appId e a internet.', 'erro');
+  sessao = {};
+  FB.login((resp) => {
+    const code = resp.authResponse?.code;
+    if (!code) return msg('#res1', 'Cadastro não concluído.', 'erro');
+    // O código vale 30 segundos; a conta às vezes chega um instante depois do login.
+    setTimeout(async () => {
+      try {
+        msg('#res1', 'Conectando...');
+        const r = await api('POST', '/api/conectar', { code, ...sessao, nome: $('#nome').value.trim() });
+        mostrarCodigo(r.wabaId, r.codigoConexao);
+        msg('#res1', `Conectado: <b>${esc(r.nome)}</b> ${esc(r.numero)}`, 'ok');
+        listar();
+      } catch (e) { msg('#res1', 'Erro: ' + esc(e.message), 'erro'); }
+    }, 800);
+  }, {
+    config_id: cfg.configId,
+    response_type: 'code',
+    override_default_response_type: true,
+    extras: { setup: {}, featureType: cfg.featureType, sessionInfoVersion: '3' },
+  });
+};
+
+function mostrarCodigo(waba, codigo) {
+  wabaAtual = waba;
+  $('#codigo').value = codigo;
+  $('#secCodigo').hidden = false;
+  $('#secAtivar').hidden = false;
+  $('#res3').innerHTML = '';
+}
+$('#btnCopiar').onclick = () => navigator.clipboard.writeText($('#codigo').value);
+
+$('#btnAtivar').onclick = async () => {
+  try {
+    msg('#res3', 'Ativando...');
+    const r = await api('POST', '/api/ativar', { wabaId: wabaAtual, urlCliente: $('#urlCliente').value });
+    msg('#res3', 'Pronto! As mensagens desse cliente agora vão para o computador dele.' + (r.avisos.length ? '<br>Avisos: ' + r.avisos.map(esc).join('<br>') : ''), 'ok');
+    listar();
+  } catch (e) { msg('#res3', 'Erro: ' + esc(e.message) + '<br>Confira se o sistema e o ngrok estão rodando no cliente e se o código foi colado no painel dele.', 'erro'); }
+};
+
+async function listar() {
+  const lista = await api('GET', '/api/clientes');
+  $('#lista').innerHTML = lista.map((c) => `<tr><td>${esc(c.nome)}</td><td>${esc(c.numero)}</td><td>${c.webhookAtivo ? esc(c.urlCliente) : 'não ativado'}</td>
+    <td><button class="sec" onclick="abrir('${esc(c.wabaId)}','${esc(c.urlCliente || '')}')">Abrir</button></td></tr>`).join('') || '<tr><td colspan="4" class="dica">Nenhum cliente ainda.</td></tr>';
+}
+async function abrir(waba, url) {
+  const { codigoConexao } = await api('GET', '/api/codigo?waba=' + encodeURIComponent(waba));
+  mostrarCodigo(waba, codigoConexao);
+  $('#urlCliente').value = url;
+  $('#secCodigo').scrollIntoView({ behavior: 'smooth' });
+}
+iniciar();
+</script>
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Balcão - Tempero da Família</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="logo">🍴 Tempero da Família</div>
+  <nav id="abas">
+    <button data-aba="pedidos" class="ativa">Pedidos <span class="badge" id="bNovos"></span></button>
+    <button data-aba="conversas">Conversas <span class="badge" id="bNaoLidas"></span></button>
+    <button data-aba="balcao">+ Pedido balcão</button>
+    <button data-aba="caixa">Caixa</button>
+    <button data-aba="clientes">Clientes</button>
+    <button data-aba="cardapio">Cardápio do dia</button>
+    <button data-aba="contatos">Contatos e envio</button>
+    <button data-aba="simulador">Simulador</button>
+    <button data-aba="config">Configurações</button>
+  </nav>
+</header>
+
+<main>
+  <!-- PEDIDOS -->
+  <section id="aba-pedidos" class="aba ativa">
+    <div class="topo">
+      <h2>Pedidos de hoje</h2>
+      <div class="resumo" id="resumoPedidos"></div>
+    </div>
+    <div class="quadro">
+      <div class="coluna"><h3>📥 Recebidos <span id="qNovo"></span></h3><div id="colNovo"></div></div>
+      <div class="coluna"><h3>🍳 Em preparo <span id="qPreparo"></span></h3><div id="colPreparo"></div></div>
+      <div class="coluna"><h3>🛵 Na entrega / pronto <span id="qSaida"></span></h3><div id="colSaida"></div></div>
+      <div class="coluna fim"><h3>✅ Finalizados <span id="qFim"></span></h3><div id="colFim"></div></div>
+    </div>
+  </section>
+
+  <!-- CONVERSAS -->
+  <section id="aba-conversas" class="aba">
+    <div class="conversas">
+      <aside id="listaConversas"></aside>
+      <div class="chat">
+        <div class="chat-topo" id="chatTopo"><em>Escolha uma conversa</em></div>
+        <div class="mensagens" id="chatMensagens"></div>
+        <form id="chatForm" class="chat-form">
+          <input id="chatTexto" placeholder="Responder como atendente..." autocomplete="off">
+          <button>Enviar</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- PEDIDO BALCÃO -->
+  <section id="aba-balcao" class="aba">
+    <h2>Novo pedido no balcão</h2>
+    <div class="balcao">
+      <div>
+        <div class="linha">
+          <label>Nome do cliente<input id="bNome" placeholder="Ex.: João" list="dlPessoas" autocomplete="off"></label>
+          <label>Telefone (opcional)<input id="bTel" placeholder="(45) 99999-9999"></label>
+        </div>
+        <datalist id="dlPessoas"></datalist><datalist id="dlEmpresas"></datalist>
+        <div id="bContaInfo" class="conta-info"></div>
+        <div id="bItens" class="cards-itens"></div>
+      </div>
+      <div class="carrinho">
+        <h3>Pedido <span id="bQtd" class="dica"></span></h3>
+        <label><input type="checkbox" id="bEmpresaChk" autocomplete="off"> Pedido de empresa / encomenda</label>
+        <div id="bEmpresaWrap" class="linha" hidden>
+          <label>Empresa<input id="bEmpresa" placeholder="Ex.: Mercado Bom Preço" list="dlEmpresas" autocomplete="off"></label>
+          <label>Entregar às<input id="bHora" type="time"></label>
+        </div>
+        <p id="bEmpresaDica" class="dica" hidden>Em cada marmita, digite o nome do funcionário e a observação dele e aperte Enter. O tamanho e o feijão ficam marcados para o próximo.</p>
+        <div id="bCarrinho"></div>
+        <label>Observação geral<input id="bObs" placeholder="Ex.: embalar separado"></label>
+        <div class="linha">
+          <label>Tipo<select id="bTipo"><option value="balcao">Balcão / retirada</option><option value="entrega">Entrega</option></select></label>
+          <label>Pagamento<select id="bPag"><option>Dinheiro</option><option>Pix</option><option>Cartão</option><option value="Anotado">Anotar na conta (pagar depois)</option></select></label>
+        </div>
+        <div id="bEndWrap" class="linha" hidden>
+          <label style="flex:3">Endereço<input id="bEnd"></label>
+          <label>Taxa de entrega<input id="bTaxa" type="number" step="0.5" min="0" placeholder="a confirmar"></label>
+        </div>
+        <div class="total" id="bTotal"></div>
+        <button id="bLancar" class="primario grande">Lançar e imprimir</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CAIXA -->
+  <section id="aba-caixa" class="aba">
+    <div class="topo">
+      <h2>Caixa de <input type="date" id="xData"></h2>
+      <div class="linha-topo">
+        <span id="xSituacao" class="tag"></span>
+        <button id="xImprimir">🖨 Imprimir resumo</button>
+      </div>
+    </div>
+    <div id="xAviso" class="aviso"></div>
+    <div class="tiles">
+      <div class="tile"><span>Vendido</span><b id="xVendido"></b><small id="xVendidoDet"></small></div>
+      <div class="tile ok"><span>Recebido na hora</span><b id="xRecebido"></b><small>pedidos finalizados</small></div>
+      <div class="tile anot"><span>Anotado (pagar depois)</span><b id="xAnotado"></b><small id="xAnotadoDet"></small></div>
+      <div class="tile pend"><span>Não finalizado</span><b id="xPendente"></b><small id="xPendenteDet"></small></div>
+      <div class="tile"><span>Contas anotadas pagas</span><b id="xContas"></b><small>recebidas neste dia</small></div>
+    </div>
+    <div class="caixa-grid">
+      <div>
+        <h3>Entrou no caixa</h3>
+        <table class="tabela"><thead><tr><th>Forma</th><th class="num">Vendas</th><th class="num">Contas pagas</th><th class="num">Total</th></tr></thead><tbody id="xFormas"></tbody></table>
+        <h3>Pedidos do dia</h3>
+        <p class="dica">Se o cliente pagou de outro jeito, troque a forma de pagamento aqui.</p>
+        <table class="tabela"><thead><tr><th>#</th><th>Hora</th><th>Cliente</th><th class="num">Valor</th><th>Pagamento</th><th>Situação</th></tr></thead><tbody id="xPedidos"></tbody></table>
+        <h3>Contas anotadas pagas neste dia</h3>
+        <table class="tabela"><thead><tr><th>Hora</th><th>Cliente</th><th>Forma</th><th>Obs.</th><th class="num">Valor</th><th></th></tr></thead><tbody id="xRecebimentos"></tbody></table>
+      </div>
+      <div>
+        <div class="painel">
+          <h3>Dinheiro na gaveta</h3>
+          <label>Troco inicial (dinheiro no começo do dia)<input id="xAbertura" type="number" step="0.01" min="0" placeholder="0,00"></label>
+          <div class="linha-valor"><span>+ Dinheiro recebido</span><b id="xDinheiro"></b></div>
+          <div class="linha-valor"><span>− Retiradas</span><b id="xRetiradas"></b></div>
+          <div id="xSangrias"></div>
+          <div class="linha sangria"><input id="xSangValor" type="number" step="0.01" min="0" placeholder="Valor"><input id="xSangDesc" placeholder="Para quê (gás, entregador...)"><button id="xSangAdd">+ Retirada</button></div>
+          <div class="linha-valor forte"><span>= Deveria ter na gaveta</span><b id="xEsperado"></b></div>
+          <label>Dinheiro contado na gaveta<input id="xContado" type="number" step="0.01" min="0" placeholder="Conte as notas e moedas"></label>
+          <div id="xDiferenca" class="diferenca"></div>
+          <label>Observação do fechamento<input id="xObs" placeholder="Opcional"></label>
+          <button id="xFechar" class="primario grande">Fechar caixa e imprimir</button>
+          <button id="xReabrir" class="grande" hidden>Reabrir caixa</button>
+        </div>
+        <div class="painel">
+          <h3>Anotado neste dia</h3>
+          <div id="xAnotadoLista"></div>
+        </div>
+      </div>
+    </div>
+    <h3>Resumo do mês <span id="xMesNome" class="dica"></span></h3>
+    <table class="tabela"><thead><tr><th>Dia</th><th class="num">Pedidos</th><th class="num">Vendido</th><th class="num">Recebido na hora</th><th class="num">Anotado</th><th class="num">Contas pagas</th><th class="num">Entrou</th><th>Caixa</th></tr></thead>
+      <tbody id="xMes"></tbody><tfoot id="xMesTotal"></tfoot></table>
+  </section>
+
+  <!-- CLIENTES -->
+  <section id="aba-clientes" class="aba">
+    <div class="topo">
+      <h2>Clientes e contas</h2>
+      <div class="linha-topo">
+        <input id="kBusca" placeholder="Buscar nome ou telefone" autocomplete="off">
+        <input type="month" id="kMes" title="Mês">
+        <label><input type="checkbox" id="kAbertas"> Só quem tem conta em aberto</label>
+        <button id="kNovo">+ Novo cliente</button>
+      </div>
+    </div>
+    <div id="kTotais" class="dica"></div>
+    <div class="clientes-grid">
+      <div class="rolagem"><table class="tabela"><thead><tr><th>Cliente</th><th class="num">Pedidos no mês</th><th class="num">Gasto no mês</th><th class="num">Em aberto</th><th>Último pedido</th></tr></thead><tbody id="kLista"></tbody></table></div>
+      <div id="kDetalhe" class="painel" hidden></div>
+    </div>
+  </section>
+
+  <!-- CARDÁPIO -->
+  <section id="aba-cardapio" class="aba">
+    <div class="topo">
+      <h2>Cardápio de <input type="date" id="cData"></h2>
+      <div>
+        <select id="cModelo"></select>
+        <button id="cUsarModelo">Carregar modelo</button>
+        <button id="cCopiarOntem">Copiar do último dia</button>
+        <button id="cImagem">🖼 Baixar imagem para o Status</button>
+        <button id="cCopiarTexto">📋 Copiar texto</button>
+      </div>
+    </div>
+    <div class="cardapio-edit">
+      <div>
+        <div id="cItens"></div>
+        <button id="cAddItem">+ Adicionar marmita</button>
+        <h3>Adicionais</h3>
+        <div id="cAdicionais"></div>
+        <button id="cAddAdic">+ Adicional</button>
+        <label>Acompanhamentos / observação do dia<input id="cAcomp"></label>
+        <label>Aviso<input id="cAviso"></label>
+        <button id="cSalvar" class="primario grande">Salvar cardápio</button>
+      </div>
+      <div>
+        <h3>Como o cliente vai ver no WhatsApp</h3>
+        <pre id="cPrevia" class="previa-whats"></pre>
+        <h3>Imagem para o Status</h3>
+        <canvas id="cCanvas" width="1080" height="1920" style="width:100%;border-radius:10px;border:1px solid var(--borda)"></canvas>
+        <p class="dica">Salve o cardápio antes. Poste a imagem no Status e mande nas listas de transmissão: não tem custo nenhum.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTATOS -->
+  <section id="aba-contatos" class="aba">
+    <div class="topo">
+      <h2>Contatos (<span id="qtContatos">0</span>)</h2>
+      <button id="dEnviar" class="primario">Enviar cardápio de hoje para todos agora</button>
+    </div>
+    <div id="dStatus" class="aviso"></div>
+    <div class="linha">
+      <div style="flex:2">
+        <table class="tabela"><thead><tr><th>Nome</th><th>Telefone</th><th>Recebe cardápio</th><th></th></tr></thead><tbody id="tContatos"></tbody></table>
+      </div>
+      <div style="flex:1">
+        <h3>Adicionar contatos</h3>
+        <p class="dica">Cole uma lista, um contato por linha: <code>Nome;45999999999</code></p>
+        <textarea id="impTexto" rows="8"></textarea>
+        <button id="impBtn">Importar</button>
+        <p class="dica">Quem conversa com o robô entra aqui automaticamente. Quem responder SAIR deixa de receber.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIMULADOR -->
+  <section id="aba-simulador" class="aba">
+    <h2>Simulador do robô</h2>
+    <p class="dica">Teste a conversa como se fosse um cliente mandando mensagem no WhatsApp.</p>
+    <div class="linha">
+      <label>Telefone<input id="sTel" value="45999990000"></label>
+      <label>Nome no WhatsApp<input id="sNome" value="Maria Teste"></label>
+    </div>
+    <div class="celular">
+      <div class="mensagens" id="sMensagens"></div>
+      <form id="sForm" class="chat-form"><input id="sTexto" placeholder="Digite como cliente..." autocomplete="off"><button>Enviar</button></form>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section id="aba-config" class="aba">
+    <h2>Configurações</h2>
+    <div class="config">
+      <fieldset>
+        <legend>Loja</legend>
+        <label><input type="checkbox" id="cfAceitando"> Aceitando pedidos pelo WhatsApp</label>
+        <label>Taxa de entrega (vazio = a confirmar)<input id="cfTaxa" type="number" step="0.5"></label>
+        <label>Chave Pix (enviada ao cliente que escolhe Pix)<input id="cfPix"></label>
+        <label>WhatsApp do robô para pedidos (aparece na imagem do cardápio)<input id="cfNumero" placeholder="(45) 99999-9999"></label>
+      </fieldset>
+      <fieldset>
+        <legend>Envio automático do cardápio</legend>
+        <label><input type="checkbox" id="cfDispAuto"> Enviar automaticamente todo dia</label>
+        <label><input type="checkbox" id="cfDispApi"> Permitir envio pela API oficial (cobrado pela Meta, cerca de R$ 0,32 por contato)</label>
+        <label>Horário<input type="time" id="cfDispHora"></label>
+        <p class="dica">Só envia se o cardápio do dia estiver cadastrado.</p>
+      </fieldset>
+      <fieldset>
+        <legend>WhatsApp</legend>
+        <label>Modo<select id="cfWModo"><option value="simulador">Simulador (teste)</option><option value="dialog360">API oficial pelo 360dialog (mesmo número do celular)</option><option value="meta">API oficial da Meta</option></select></label>
+        <div id="cf360">
+          <label>API key do 360dialog<input id="cfW360" type="password" autocomplete="off"></label>
+          <label>Chave secreta do webhook (você inventa)<input id="cfWChave" autocomplete="off"></label>
+          <label>Endereço público do túnel<input id="cfWUrl" placeholder="https://tempero.ngrok-free.app"></label>
+          <button id="cfW360Reg">Cadastrar webhook no 360dialog</button>
+        </div>
+        <div id="cfMeta">
+          <label>Código de conexão (gerado pela ferramenta de conexão)<textarea id="cfWCodigo" rows="3" placeholder="TEMPERO-..."></textarea></label>
+          <button id="cfWCodigoBtn">Aplicar código</button>
+        <label>Phone Number ID<input id="cfWPhone"></label>
+        <label>Token de acesso (permanente)<input id="cfWToken" type="password" autocomplete="off"></label>
+        <label>App Secret (confere se a mensagem veio da Meta)<input id="cfWSecret" type="password" autocomplete="off"></label>
+        <label>Token de verificação do webhook (você inventa)<input id="cfWVerify"></label>
+        <label>Nome do modelo do cardápio<input id="cfWModelo" placeholder="cardapio_do_dia"></label>
+        <p class="dica">Endereço do webhook para colocar na Meta: <code>https://SEU-ENDERECO/webhook</code> (o túnel aponta para a porta 3001, nunca para a 3000 do painel)</p>
+        </div>
+        <button id="cfWTeste">Testar conexão</button>
+      </fieldset>
+      <fieldset>
+        <legend>Impressora da cozinha</legend>
+        <label>Modo<select id="cfImpModo">
+          <option value="rede">Rede (IP da impressora)</option>
+          <option value="compartilhada">USB compartilhada no Windows</option>
+          <option value="arquivo">Só salvar em arquivo (teste)</option>
+          <option value="desligada">Desligada</option>
+        </select></label>
+        <label>IP da impressora<input id="cfImpHost"></label>
+        <label>Compartilhamento (USB)<input id="cfImpComp"></label>
+        <label>Largura<select id="cfImpCols"><option value="48">80 mm</option><option value="32">58 mm</option></select></label>
+        <label>Vias<input type="number" id="cfImpVias" min="1" max="3"></label>
+        <label><input type="checkbox" id="cfImpAuto"> Imprimir assim que o pedido é confirmado</label>
+        <label><input type="checkbox" id="cfImpEtiq"> Pedido de empresa: imprimir uma etiqueta por marmita com o nome do funcionário</label>
+        <button id="cfImpTeste">Imprimir teste</button>
+      </fieldset>
+    </div>
+    <button id="cfSalvar" class="primario grande">Salvar configurações</button>
+  </section>
+</main>
+
+<dialog id="dlgReceber">
+  <form method="dialog" id="fReceber">
+    <h3>Receber pagamento</h3>
+    <p id="rCliente" class="dica"></p>
+    <label>Valor<input id="rValor" type="number" step="0.01" min="0.01" required></label>
+    <label>Forma<select id="rForma"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select></label>
+    <label>Observação<input id="rObs" placeholder="Ex.: referente a outubro"></label>
+    <div class="linha"><button value="ok" class="primario">Receber</button><button value="cancelar" formnovalidate>Cancelar</button></div>
+  </form>
+</dialog>
+<dialog id="dlgConta">
+  <form method="dialog" id="fConta">
+    <h3 id="ctTitulo">Cliente</h3>
+    <label>Tipo<select id="ctTipo"><option value="pessoa">Pessoa</option><option value="empresa">Empresa</option></select></label>
+    <label>Nome<input id="ctNome" required maxlength="80"></label>
+    <label>Telefone (com DDD)<input id="ctTel" placeholder="(45) 99999-9999"></label>
+    <label id="ctAnotarWrap"><input type="checkbox" id="ctAnotar"> Pode anotar pelo WhatsApp (o robô oferece "Anotar na minha conta")</label>
+    <label>Observação<input id="ctObs" maxlength="300" placeholder="Ex.: paga todo dia 5"></label>
+    <div class="linha"><button value="ok" class="primario">Salvar</button><button value="cancelar" formnovalidate>Cancelar</button></div>
+    <div id="ctExtra">
+      <h4>Cadastro repetido?</h4>
+      <div class="linha"><select id="ctJuntar"></select><button type="button" id="ctJuntarBtn">Juntar com este</button></div>
+      <p class="dica">Passa os pedidos e pagamentos deste cadastro para o escolhido e apaga este.</p>
+      <button type="button" id="ctExcluir">Excluir cadastro (só se não tiver pedidos)</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="dlgCupom"><pre id="cupomTexto"></pre><form method="dialog"><button>Fechar</button></form></dialog>
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

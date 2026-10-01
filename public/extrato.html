@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extrato do mês</title>
+<style>
+  :root { --verm: #c8102e; --borda: #ddd; --suave: #666; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, "Segoe UI", Roboto, sans-serif; color: #222; background: #eee; font-size: 14px; }
+  .barra { background: #333; color: #fff; padding: 10px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; position: sticky; top: 0; }
+  .barra button { background: #fff; border: 0; border-radius: 6px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
+  .barra button.primario { background: var(--verm); color: #fff; font-weight: 700; }
+  .barra span { margin-left: auto; font-size: 13px; opacity: .8; }
+  .folha { background: #fff; max-width: 210mm; margin: 16px auto; padding: 14mm 14mm; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .cab { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid var(--verm); padding-bottom: 10px; gap: 16px; }
+  .loja { font-size: 22px; font-weight: 800; color: var(--verm); }
+  .cab .dir { text-align: right; }
+  .cab .titulo { font-size: 18px; font-weight: 700; }
+  .cliente { margin: 14px 0; font-size: 16px; }
+  .cliente b { font-size: 19px; }
+  .caixas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 16px; }
+  .caixa { border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px; }
+  .caixa span { display: block; font-size: 12px; color: var(--suave); }
+  .caixa b { font-size: 17px; }
+  .caixa.pagar { border: 2px solid var(--verm); }
+  .caixa.pagar b { color: var(--verm); font-size: 20px; }
+  h2 { font-size: 15px; margin: 18px 0 6px; border-bottom: 1px solid var(--borda); padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+  th { font-size: 12px; color: var(--suave); font-weight: 600; }
+  .num { text-align: right; white-space: nowrap; }
+  tfoot td { font-weight: 800; border-top: 2px solid #999; }
+  .itens { font-size: 13px; }
+  .func { color: #2b6cb0; font-weight: 600; }
+  .obs { color: var(--suave); font-style: italic; }
+  .conta { margin-top: 18px; padding: 10px 12px; background: #faf8f5; border-radius: 8px; }
+  .conta div { display: flex; justify-content: space-between; padding: 2px 0; }
+  .conta .final { font-size: 17px; font-weight: 800; border-top: 1px solid #ccc; margin-top: 4px; padding-top: 6px; }
+  .rodape { margin-top: 18px; font-size: 13px; color: var(--suave); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .vazio { color: var(--suave); padding: 8px 0; }
+  .erro { max-width: 600px; margin: 40px auto; background: #fff; padding: 20px; border-radius: 8px; }
+  @media (max-width: 700px) { .caixas { grid-template-columns: repeat(2, 1fr); } .folha { padding: 16px; margin: 0; } }
+  @media print {
+    body { background: #fff; }
+    .barra { display: none; }
+    .folha { box-shadow: none; margin: 0; max-width: none; padding: 0; }
+    tr { break-inside: avoid; }
+    @page { size: A4; margin: 12mm; }
+  }
+</style>
+</head>
+<body>
+<div class="barra">
+  <button class="primario" onclick="window.print()">🖨 Imprimir ou salvar PDF</button>
+  <button id="ant">◀ Mês anterior</button>
+  <button id="prox">Próximo mês ▶</button>
+  <button id="copiar">📋 Copiar resumo para o WhatsApp</button>
+  <span>Para mandar por WhatsApp: "Salvar como PDF" na janela de impressão e envie o arquivo.</span>
+</div>
+<div id="conteudo"></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const reais = (v) => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const dataBR = (d) => String(d || '').split('-').reverse().join('/');
+const fmtTel = (n) => { const m = String(n).match(/^55(\d{2})(\d{4,5})(\d{4})$/); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : n; };
+const nomeMes = (mes) => { const [a, m] = mes.split('-'); return new Date(Number(a), Number(m) - 1, 15).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }); };
+const params = new URLSearchParams(location.search);
+const contaId = params.get('conta');
+let mes = params.get('mes') || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+let ex = null, cfg = {};
+
+async function api(url) {
+  const r = await fetch(url);
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.erro || 'Erro');
+  return d;
+}
+function mudarMes(delta) {
+  const [a, m] = mes.split('-').map(Number);
+  const d = new Date(a, m - 1 + delta, 1);
+  mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  history.replaceState(null, '', `?conta=${contaId}&mes=${mes}`);
+  carregar();
+}
+$('#ant').onclick = () => mudarMes(-1);
+$('#prox').onclick = () => mudarMes(1);
+
+async function carregar() {
+  try {
+    [ex, cfg] = await Promise.all([api(`/api/contas/${encodeURIComponent(contaId)}/extrato?mes=${mes}`), api('/api/config')]);
+  } catch (e) {
+    $('#conteudo').innerHTML = `<div class="erro">Não foi possível abrir o extrato: ${esc(e.message)}</div>`;
+    return;
+  }
+  const c = ex.conta, t = ex.totais;
+  document.title = `Extrato ${nomeMes(mes)} - ${c.nome}`;
+  const itens = (p) => p.itens.map((it) => `${it.quantidade}x ${esc(it.nome)} ${esc(it.tamanho)}${it.extras.length ? ` (${esc(it.extras.join(', '))})` : ''}${it.funcionario ? ` · <span class="func">${esc(it.funcionario)}</span>` : ''}${it.obs ? ` <span class="obs">${esc(it.obs)}</span>` : ''}`).join('<br>');
+  const pagar = ex.saldoFinal;
+  $('#conteudo').innerHTML = `<div class="folha">
+    <div class="cab">
+      <div><div class="loja">${esc(cfg.nomeLoja || '')}</div><div>${esc(cfg.numeroPedidos || '')}</div></div>
+      <div class="dir"><div class="titulo">Extrato de ${nomeMes(mes)}</div><div>Emitido em ${new Date().toLocaleDateString('pt-BR')}</div></div>
+    </div>
+    <div class="cliente">${c.tipo === 'empresa' ? 'Empresa' : 'Cliente'}: <b>${esc(c.nome)}</b>${c.telefone ? ` · ${fmtTel(c.telefone)}` : ''}</div>
+    <div class="caixas">
+      <div class="caixa"><span>Pedidos no mês</span><b>${reais(t.total)}</b><span>${t.pedidos} pedidos · ${t.marmitas} marmitas</span></div>
+      <div class="caixa"><span>Já pago na hora</span><b>${reais(t.pagoNaHora)}</b>${t.naoFinalizado ? `<span>não finalizado: ${reais(t.naoFinalizado)}</span>` : ''}</div>
+      <div class="caixa"><span>Anotado no mês</span><b>${reais(t.anotado)}</b></div>
+      <div class="caixa pagar"><span>${pagar < 0 ? 'Crédito do cliente' : 'Total a pagar'}</span><b>${reais(Math.abs(pagar))}</b></div>
+    </div>
+
+    <h2>Pedidos</h2>
+    ${ex.pedidos.length ? `<table><thead><tr><th>Data</th><th>Pedido</th><th>Marmitas</th><th>Pagamento</th><th class="num">Valor</th></tr></thead><tbody>
+      ${ex.pedidos.map((p) => `<tr><td>${dataBR(p.data)}</td><td>#${p.numero}</td><td class="itens">${itens(p)}${p.taxa ? `<br>Taxa de entrega ${reais(p.taxa)}` : ''}</td><td>${p.forma === 'Anotado' ? 'Anotado' : esc(p.forma) + (p.status === 'entregue' ? '' : ' (não finalizado)')}</td><td class="num">${reais(p.total)}</td></tr>`).join('')}
+      </tbody><tfoot><tr><td colspan="4">Total do mês</td><td class="num">${reais(t.total)}</td></tr></tfoot></table>` : '<div class="vazio">Nenhum pedido neste mês.</div>'}
+
+    ${ex.porFuncionario ? `<h2>Por funcionário</h2><table><thead><tr><th>Funcionário</th><th class="num">Marmitas</th><th class="num">Valor</th></tr></thead><tbody>
+      ${ex.porFuncionario.map((f) => `<tr><td>${esc(f.nome)}</td><td class="num">${f.marmitas}</td><td class="num">${reais(f.valor)}</td></tr>`).join('')}
+      ${t.taxas ? `<tr><td>Taxas de entrega</td><td></td><td class="num">${reais(t.taxas)}</td></tr>` : ''}
+      </tbody><tfoot><tr><td>Total</td><td class="num">${ex.porFuncionario.reduce((s, f) => s + f.marmitas, 0)}</td><td class="num">${reais(t.total)}</td></tr></tfoot></table>` : ''}
+
+    ${ex.recebimentos.length ? `<h2>Pagamentos recebidos</h2><table><thead><tr><th>Data</th><th>Forma</th><th>Obs.</th><th class="num">Valor</th></tr></thead><tbody>
+      ${ex.recebimentos.map((r) => `<tr><td>${dataBR(r.data)}</td><td>${esc(r.forma)}</td><td>${esc(r.obs)}</td><td class="num">${reais(r.valor)}</td></tr>`).join('')}
+      </tbody></table>` : ''}
+
+    <div class="conta">
+      <div><span>Saldo anterior (meses passados)</span><span>${reais(ex.saldoAnterior)}</span></div>
+      <div><span>+ Anotado em ${nomeMes(mes)}</span><span>${reais(t.anotado)}</span></div>
+      <div><span>− Pagamentos recebidos em ${nomeMes(mes)}</span><span>${reais(t.recebido)}</span></div>
+      <div class="final"><span>${pagar < 0 ? 'Crédito do cliente' : 'Total a pagar'}</span><span>${reais(Math.abs(pagar))}</span></div>
+    </div>
+    <div class="rodape">
+      <div>${pagar > 0 && cfg.chavePix ? `Pague pelo Pix: <b>${esc(cfg.chavePix)}</b>` : ''}</div>
+      <div>${esc(cfg.nomeLoja || '')}</div>
+    </div>
+  </div>`;
+}
+
+$('#copiar').onclick = async () => {
+  if (!ex) return;
+  try { await navigator.clipboard.writeText(ex.texto); alert('Resumo copiado. Cole na conversa do cliente no WhatsApp.'); } catch { alert('Não foi possível copiar.'); }
+};
+
+carregar();
+</script>
+</body>
+</html>

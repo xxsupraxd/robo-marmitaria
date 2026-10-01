@@ -1,0 +1,4 @@
+data/
+node_modules/
+ferramentas/provedor.json
+ferramentas/clientes.json

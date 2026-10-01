@@ -1,0 +1,13 @@
+{
+  "name": "robo-marmitaria",
+  "version": "0.1.0",
+  "description": "Robô de pedidos pelo WhatsApp, painel do balcão e impressão na cozinha - Marmitaria Tempero da Família",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node scripts/teste.js && node scripts/teste-caixa.js && node scripts/teste-meta.js && node scripts/teste-provedor.js",
+    "conectar": "node ferramentas/conectar-cliente.js"
+  },
+  "engines": { "node": ">=18" }
+}

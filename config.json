@@ -1,0 +1,45 @@
+{
+  "nomeLoja": "Marmitaria Tempero da Família",
+  "porta": 3000,
+  "portaWebhook": 3001,
+  "aceitandoPedidos": true,
+  "taxaEntrega": null,
+  "mensagemTaxaEntrega": "taxa de entrega a confirmar conforme o bairro",
+  "chavePix": "",
+  "disparo": {
+    "automatico": false,
+    "horario": "09:00",
+    "intervaloSegundos": [
+      4,
+      9
+    ],
+    "pelaApiOficial": false
+  },
+  "impressora": {
+    "modo": "arquivo",
+    "host": "192.168.0.100",
+    "porta": 9100,
+    "compartilhamento": "\\\\localhost\\COZINHA",
+    "colunas": 48,
+    "semAcentos": true,
+    "vias": 1,
+    "imprimirAoConfirmar": true,
+    "etiquetasEmpresa": true
+  },
+  "whatsapp": {
+    "modo": "simulador",
+    "phoneNumberId": "",
+    "token": "",
+    "appSecret": "",
+    "verifyToken": "",
+    "versaoApi": "v25.0",
+    "templateCardapio": {
+      "nome": "cardapio_do_dia",
+      "idioma": "pt_BR"
+    },
+    "apiKey360": "",
+    "chaveWebhook": "",
+    "urlPublica": ""
+  },
+  "numeroPedidos": ""
+}
